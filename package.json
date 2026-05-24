@@ -2,11 +2,11 @@
   "name": "d365-form-extractor",
   "displayName": "D365 FO Config Compare (Beta)",
   "description": "[BETA] Extract and compare Microsoft Dynamics 365 Finance & Operations form configurations across environments using D365 ERP MCP or Playwright (Chrome DevTools Protocol). Authenticates via Azure CLI \u2014 no app registration required.",
-  "version": "0.8.2",
+  "version": "0.8.4",
   "preview": true,
-  "publisher": "prashant-verma-aibs",
+  "publisher": "PrashantVerma",
   "author": {
-    "name": "Prashant Verma AIBS"
+    "name": "Prashant Verma"
   },
   "license": "MIT",
   "icon": "media/icon-beta.png",
@@ -53,6 +53,11 @@
       {
         "command": "d365FormExtractor.clearSettings",
         "title": "D365 FO Config Compare: Clear Saved Settings",
+        "category": "D365"
+      },
+      {
+        "command": "d365FormExtractor.showDisclaimer",
+        "title": "D365 FO Config Compare: Show Disclaimer",
         "category": "D365"
       },
       {

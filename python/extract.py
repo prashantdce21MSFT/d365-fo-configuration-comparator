@@ -560,19 +560,134 @@ _JS_EXPAND_FASTTABS = """() => {
 }"""
 
 _JS_SNAPSHOT_FIELDS = """() => {
+    // Capture real form inputs only. Excludes:
+    //   - inputs inside [role="gridcell"]/[role="cell"] (matrix cells -> Grids)
+    //   - inputs inside div.radioButton                  (posting-type radios)
+    //   - inputs inside [role="radiogroup"]              (same)
+    //   - page-chrome search boxes
+    //   - "filter" / "search" labelled inputs
+    // Returns { label, internal, value, section }:
+    //   label    = user-visible UI text (best-effort: <label for>, aria-label,
+    //              aria-labelledby, preceding-sibling label, wrapper label)
+    //   internal = D365 control id / name (locale-independent; good for diffs)
+    //   section  = nearest FastTab/group caption
     const out = [];
     const seen = new Set();
-    document.querySelectorAll('input,[role="combobox"],[role="checkbox"]').forEach(el => {
+    const SKIP_LABEL_RE = /^(search( for (a|an) [a-z]+)?|filter)$/i;
+
+    function textOf(el) {
+        if (!el) return '';
+        return (el.textContent || '').trim().replace(/\\s+/g, ' ');
+    }
+
+    function resolveLabel(el) {
+        // 1. aria-labelledby
+        const lblIds = (el.getAttribute('aria-labelledby') || '').trim();
+        if (lblIds) {
+            const parts = lblIds.split(/\\s+/).map(id => textOf(document.getElementById(id))).filter(Boolean);
+            if (parts.length) return parts.join(' ');
+        }
+        // 2. <label for="id">
         const id = el.getAttribute('id') || '';
-        const labelByFor = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
-        const lbl = (labelByFor?.textContent?.trim()
-                  || el.getAttribute('aria-label')
-                  || el.getAttribute('name') || '').trim();
-        if (!lbl || lbl.toLowerCase() === 'filter' || lbl.toLowerCase() === 'search') return;
+        if (id) {
+            const lf = document.querySelector(`label[for="${CSS.escape(id)}"]`);
+            const t = textOf(lf);
+            if (t) return t;
+        }
+        // 3. aria-label on the element
+        const al = el.getAttribute('aria-label');
+        if (al && al.trim()) return al.trim();
+        // 4. aria-label / title on closest control wrapper (D365 often labels
+        //    the wrapper, not the inner input)
+        const wrap = el.closest('[data-dyn-controlname], [class*="FormControl"], [class*="formControl"]');
+        if (wrap) {
+            const wal = wrap.getAttribute('aria-label') || wrap.getAttribute('title');
+            if (wal && wal.trim()) return wal.trim();
+            const inLbl = wrap.querySelector('label, [class*="label" i]');
+            const t2 = textOf(inLbl);
+            if (t2) return t2;
+        }
+        // 5. Preceding sibling label / span with class label
+        let prev = el.previousElementSibling;
+        for (let i = 0; i < 4 && prev; i++) {
+            if (prev.tagName === 'LABEL' || /label/i.test(prev.className || '')) {
+                const t3 = textOf(prev);
+                if (t3) return t3;
+            }
+            prev = prev.previousElementSibling;
+        }
+        // 6. Parent <label>
+        const parentLabel = el.closest('label');
+        if (parentLabel) {
+            // Strip the input's own value/text
+            const t4 = textOf(parentLabel);
+            if (t4) return t4;
+        }
+        return '';
+    }
+
+    function internalName(el) {
+        // D365 control names are most reliable for cross-env diffing.
+        return (el.getAttribute('data-dyn-controlname')
+             || el.closest('[data-dyn-controlname]')?.getAttribute('data-dyn-controlname')
+             || el.getAttribute('name')
+             || el.getAttribute('id')
+             || '').trim();
+    }
+
+    function nearestSection(el) {
+        let p = el;
+        for (let i = 0; i < 14 && p; i++) {
+            if (p.classList) {
+                const cls = [...p.classList].join(' ');
+                if (/fasttab/i.test(cls) || /groupHeader/i.test(cls)) {
+                    // FastTab caption can live in a header or a caption descendant.
+                    const cap = p.querySelector('[class*="fastTabHeader" i] [class*="caption" i],'
+                                              + '[class*="FastTabHeader" i] [class*="caption" i],'
+                                              + '[class*="groupHeader" i] [class*="caption" i],'
+                                              + '[class*="summary" i],'
+                                              + 'h2, h3, [role="heading"]');
+                    const t = textOf(cap);
+                    if (t) return t;
+                }
+            }
+            if (p.getAttribute) {
+                const role = p.getAttribute('role');
+                if (role === 'group' || role === 'region') {
+                    const lbl = p.getAttribute('aria-label');
+                    if (lbl && lbl.trim()) return lbl.trim();
+                    const cap = p.querySelector('legend, [class*="caption" i], [class*="GroupTitle" i]');
+                    const t = textOf(cap);
+                    if (t) return t;
+                }
+            }
+            p = p.parentElement;
+        }
+        return '';
+    }
+
+    document.querySelectorAll('input,[role="combobox"],[role="checkbox"]').forEach(el => {
+        if (el.closest('[role="gridcell"],[role="cell"]')) return;
+        if (el.closest('div.radioButton')) return;
+        if (el.closest('[role="radiogroup"]')) return;
+        if (el.closest('[role="search"]')) return;
+        if (el.closest('[class*="searchBox" i], [class*="navigationSearch" i]')) return;
+        if (el.getAttribute('type') === 'hidden') return;
+        const r = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+        if (r && (r.width === 0 || r.height === 0) && el.offsetParent === null) return;
+
+        const label    = resolveLabel(el);
+        const internal = internalName(el);
+        const display  = label || internal;
+        if (!display || SKIP_LABEL_RE.test(display)) return;
+
         const val = (el.value || el.getAttribute('aria-checked') || '').toString().trim();
-        const key = lbl + '|' + val;
+        const section = nearestSection(el);
+        // Dedup by (section, internal, label, value) -- internal handles
+        // unlabeled inputs uniquely; label collapses near-duplicates.
+        const key = section + '||' + (internal || display) + '||' + val;
         if (seen.has(key)) return; seen.add(key);
-        out.push({ label: lbl, value: val });
+        out.push({ label: label, internal: internal, value: val, section: section });
     });
     return out;
 }"""
@@ -586,10 +701,18 @@ _JS_GRID_CENTERS = """() =>
         })"""
 
 _JS_SNAPSHOT_GRIDS = """() => {
+    // D365 grid: headers and data cells are positionally aligned 1:1, but the
+    // first and last columns are usually structural (row-select radio, trailing
+    // pad) with EMPTY header text. We keep alignment by position, then drop
+    // empty-header columns from the final output so values land in the right
+    // named column.
     const grids = [...document.querySelectorAll('[role="grid"]')].filter(g => g.getBoundingClientRect().height > 0);
     return grids.map(g => {
-        const headers = [...g.querySelectorAll('[role="columnheader"]')]
-            .map(h => (h.textContent || '').trim()).filter(Boolean);
+        const headerCells = [...g.querySelectorAll('[role="columnheader"]')];
+        const allHeaders = headerCells.map(h => (h.textContent || '').trim());
+        const keepIdx = [];
+        allHeaders.forEach((h, i) => { if (h) keepIdx.push(i); });
+        const headers = keepIdx.map(i => allHeaders[i]);
         const rows = [];
         g.querySelectorAll('[role="row"]').forEach(r => {
             if (r.querySelector('[role="columnheader"]')) return;
@@ -598,10 +721,92 @@ _JS_SNAPSHOT_GRIDS = """() => {
                     const inp = c.querySelector('input');
                     return inp ? (inp.value || '').trim() : (c.textContent || '').trim();
                 });
-            if (cells.some(v => v)) rows.push(cells);
+            // Align by position. If cell count matches header count, drop the
+            // same structural columns. Otherwise fall back to taking the first
+            // N cells (best-effort) to avoid losing data on unusual grids.
+            let row;
+            if (cells.length === allHeaders.length) {
+                row = keepIdx.map(i => cells[i] || '');
+            } else {
+                row = cells.slice(0, headers.length);
+                while (row.length < headers.length) row.push('');
+            }
+            if (row.some(v => v)) rows.push(row);
         });
         return { headers, rows };
     });
+}"""
+
+_JS_POSTING_TYPES = """() => {
+    // D365 radioButton widget: container div.radioButton holding the label text,
+    // grouped by an ancestor div[role="radiogroup"]. Posting-type radios live on
+    // the left side of forms like InventPosting / LedgerJournalSetupPost.
+    // Excludes radios that live inside a [role="grid"] (row-select widgets).
+    const items = [...document.querySelectorAll('div.radioButton')]
+        .filter(d => !d.closest('[role="grid"]'))
+        .filter(d => d.getBoundingClientRect().height > 0);
+    const seen = new Set();
+    const out = [];
+    items.forEach((d, idx) => {
+        const lbl = d.querySelector('.radioButton-label, label');
+        const name = ((lbl ? lbl.textContent : d.textContent) || '').trim().replace(/\\s+/g, ' ');
+        if (!name || name.length > 120 || seen.has(name)) return;
+        seen.add(name);
+        out.push({ name, idx });
+    });
+    return out;
+}"""
+
+_JS_CLICK_POSTING_TYPE = """(filteredIdx) => {
+    const items = [...document.querySelectorAll('div.radioButton')]
+        .filter(d => !d.closest('[role="grid"]'))
+        .filter(d => d.getBoundingClientRect().height > 0);
+    const target = items[filteredIdx];
+    if (!target) return false;
+    const clickable = target.querySelector('input[type="radio"], [role="radio"]') || target;
+    clickable.click();
+    return true;
+}"""
+
+_JS_GET_MASTER_ROWS = """() => {
+    // Pick the largest visible grid as the "master" list and enumerate its data
+    // rows. Returns [{idx, name}] where idx is the position among data rows and
+    // name is a stable identifier built from the first non-empty input value or
+    // the row's textContent (truncated).
+    const grids = [...document.querySelectorAll('[role="grid"]')]
+        .filter(g => g.getBoundingClientRect().height > 0);
+    if (!grids.length) return [];
+    let mainGrid = grids[0], maxRows = 0;
+    grids.forEach(g => {
+        const n = g.querySelectorAll('[role="row"]').length;
+        if (n > maxRows) { maxRows = n; mainGrid = g; }
+    });
+    const allRows = mainGrid.querySelectorAll('[role="row"]');
+    const dataRows = Array.from(allRows).filter(r => !r.querySelector('[role="columnheader"]'));
+    const seen = new Set();
+    return dataRows.map((r, i) => {
+        const inputs = r.querySelectorAll('input[type="text"], input:not([type="checkbox"]):not([type="radio"])');
+        const vals = Array.from(inputs).map(inp => (inp.value || '').trim()).filter(v => v);
+        const text = vals.length ? vals[0] : (r.textContent || '').trim().replace(/\\s+/g, ' ').substring(0, 120);
+        if (!text || seen.has(text)) return null;
+        seen.add(text);
+        return { idx: i, name: text };
+    }).filter(Boolean);
+}"""
+
+_JS_CLICK_MASTER_ROW = """(idx) => {
+    const grids = [...document.querySelectorAll('[role="grid"]')]
+        .filter(g => g.getBoundingClientRect().height > 0);
+    if (!grids.length) return false;
+    let mainGrid = grids[0], maxRows = 0;
+    grids.forEach(g => {
+        const n = g.querySelectorAll('[role="row"]').length;
+        if (n > maxRows) { maxRows = n; mainGrid = g; }
+    });
+    const allRows = mainGrid.querySelectorAll('[role="row"]');
+    const dataRows = Array.from(allRows).filter(r => !r.querySelector('[role="columnheader"]'));
+    if (dataRows[idx]) { dataRows[idx].click(); return true; }
+    return false;
 }"""
 
 
@@ -639,7 +844,8 @@ def _scroll_collect_grids(page) -> List[dict]:
     return [{"headers": all_hdrs[i], "rows": list(all_rows[i].values())} for i in range(n)]
 
 
-def extract_playwright(base_url: str, env_label: str, form: str, le: str) -> dict:
+def extract_playwright(base_url: str, env_label: str, form: str, le: str,
+                       per_row_detail: bool = False, max_records: int = 500) -> dict:
     from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
     host = base_url.replace("https://", "").replace("http://", "").rstrip("/")
     url = f"https://{host}/?cmp={le.lower()}&mi={form}"
@@ -671,7 +877,9 @@ def extract_playwright(base_url: str, env_label: str, form: str, le: str) -> dic
 
         top_fields_arr = page.evaluate(_JS_SNAPSHOT_FIELDS) or []
         top_grids_arr  = _scroll_collect_grids(page)
-        top_fields = {f"f{i}": {"label": f["label"], "value": f["value"], "type": "input"} for i, f in enumerate(top_fields_arr)}
+        top_fields = {f"f{i}": {"label": f["label"], "internal": f.get("internal", ""),
+                                 "value": f["value"], "section": f.get("section", ""),
+                                 "type": "input"} for i, f in enumerate(top_fields_arr)}
         top_grids: Dict[str, dict] = {}
         for i, g in enumerate(top_grids_arr):
             top_grids[f"Grid{i}"] = {
@@ -682,6 +890,46 @@ def extract_playwright(base_url: str, env_label: str, form: str, le: str) -> dic
         tabs = page.evaluate(_JS_TABS, list(_ACTION_BUTTONS)) or []
         print(f"    Tabs discovered: {len(tabs)}")
         out_tabs: Dict[str, dict] = {}
+        _records: List[dict] = []
+
+        # Master-detail iteration: when --per-row-detail is set, there are NO
+        # posting-type radios, AND a top-level grid exists with data rows, walk
+        # each row, click it, snapshot the detail panel.
+        if per_row_detail and not tabs:
+            try:
+                master_rows = page.evaluate(_JS_GET_MASTER_ROWS) or []
+            except Exception:
+                master_rows = []
+            if master_rows:
+                n = len(master_rows)
+                if n > max_records:
+                    print(f"    Master-detail: {n} rows found, capping at {max_records}")
+                    master_rows = master_rows[:max_records]
+                else:
+                    print(f"    Master-detail: {n} rows to iterate")
+                for k, row_info in enumerate(master_rows, 1):
+                    try:
+                        if not page.evaluate(_JS_CLICK_MASTER_ROW, row_info["idx"]):
+                            continue
+                        page.wait_for_timeout(1200)
+                        try: page.evaluate(_JS_EXPAND_FASTTABS); page.wait_for_timeout(400)
+                        except Exception: pass
+                        det_fields_arr = page.evaluate(_JS_SNAPSHOT_FIELDS) or []
+                        det_grids_arr  = _scroll_collect_grids(page)
+                        det_fields = {f"f{j}": {"label": f["label"], "internal": f.get("internal", ""),
+                                                 "value": f["value"], "section": f.get("section", ""),
+                                                 "type": "input"}
+                                      for j, f in enumerate(det_fields_arr)}
+                        det_grids: Dict[str, dict] = {}
+                        for j, g in enumerate(det_grids_arr):
+                            det_grids[f"Grid{j}"] = {
+                                "columns": g["headers"],
+                                "rows": [dict(zip(g["headers"], r)) if g["headers"] else r for r in g["rows"]],
+                            }
+                        _records.append({"name": row_info["name"], "fields": det_fields, "grids": det_grids})
+                        print(f"      [{k}/{len(master_rows)}] {row_info['name']}: {len(det_fields)} field(s)")
+                    except Exception as e:
+                        print(f"      row '{row_info.get('name')}' failed: {e}")
         for i, t in enumerate(tabs, 1):
             try:
                 ok = page.evaluate(_JS_CLICK_TAB, {"actionButtons": list(_ACTION_BUTTONS), "tabIdx": t["idx"]})
@@ -692,22 +940,74 @@ def extract_playwright(base_url: str, env_label: str, form: str, le: str) -> dic
 
                 fields_arr = page.evaluate(_JS_SNAPSHOT_FIELDS) or []
                 grids_arr  = _scroll_collect_grids(page)
-                fields = {f"f{j}": {"label": f["label"], "value": f["value"], "type": "input"} for j, f in enumerate(fields_arr)}
+
+                # Detect left-side posting-type radio list (InventPosting-style).
+                # If present, iterate each radio and merge matrices with a leading
+                # "Posting type" column so no posting type's grid is missed.
+                posting_types = page.evaluate(_JS_POSTING_TYPES) or []
+                has_posting_types = bool(posting_types)
+                if has_posting_types:
+                    print(f"        posting types discovered: {len(posting_types)}")
+                    combined: List[dict] = []
+                    # Track which posting types yielded 0 rows so we can emit a
+                    # placeholder row for each — so the workbook reflects ALL
+                    # posting types the user sees in D365, not just the ones
+                    # with configured rows.
+                    empty_posting_types: List[str] = []
+                    for pt_idx, pt in enumerate(posting_types):
+                        try:
+                            ok = page.evaluate(_JS_CLICK_POSTING_TYPE, pt_idx)
+                            if not ok: continue
+                            # Slightly longer settle so virtualised grids finish
+                            # rendering before we snapshot. Helps on slow tenants.
+                            page.wait_for_timeout(900)
+                            pt_grids = _scroll_collect_grids(page)
+                            row_count = sum(len(g.get("rows", [])) for g in pt_grids)
+                            for gi, g in enumerate(pt_grids):
+                                while gi >= len(combined):
+                                    combined.append({"headers": [], "rows": []})
+                                if not combined[gi]["headers"] and g.get("headers"):
+                                    combined[gi]["headers"] = ["Posting type"] + g["headers"]
+                                for r in g.get("rows", []):
+                                    combined[gi]["rows"].append([pt["name"]] + list(r))
+                            if row_count == 0:
+                                empty_posting_types.append(pt["name"])
+                            print(f"          [{pt_idx+1}/{len(posting_types)}] {pt['name']}: {row_count} row(s)")
+                        except Exception as e:
+                            print(f"          posting type '{pt.get('name')}' failed: {e}")
+                    # Emit a placeholder row for every empty posting type so the
+                    # Excel sheet faithfully lists ALL posting types visible in
+                    # the form's left-side radio list.
+                    if empty_posting_types and combined:
+                        hdrs = combined[0].get("headers", [])
+                        pad = max(0, len(hdrs) - 1)
+                        for name in empty_posting_types:
+                            combined[0]["rows"].append([name] + [""] * pad)
+                    grids_arr = combined
+
+                fields = {f"f{j}": {"label": f["label"], "internal": f.get("internal", ""),
+                                     "value": f["value"], "section": f.get("section", ""),
+                                     "type": "input"} for j, f in enumerate(fields_arr)}
                 grids: Dict[str, dict] = {}
                 for j, g in enumerate(grids_arr):
                     grids[f"Grid{j}"] = {
                         "columns": g["headers"],
                         "rows": [dict(zip(g["headers"], r)) if g["headers"] else r for r in g["rows"]],
                     }
-                out_tabs[f"tab{i}"] = {"text": t["name"], "fields": fields, "grids": grids}
-                print(f"    [{i}/{len(tabs)}] {t['name']}: {len(fields)} fields, {len(grids)} sub-grid(s)")
+                out_tabs[f"tab{i}"] = {"text": t["name"], "fields": fields, "grids": grids,
+                                       "has_posting_types": has_posting_types}
+                summary_rows = sum(len(g["rows"]) for g in grids.values())
+                print(f"    [{i}/{len(tabs)}] {t['name']}: {len(fields)} fields, {len(grids)} sub-grid(s), {summary_rows} row(s)")
             except Exception as e:
                 print(f"    tab '{t.get('name')}' failed: {e}")
 
         browser.close()
 
-    return {"form": form, "caption": "", "company": le,
-            "top_fields": top_fields, "top_grids": top_grids, "tabs": out_tabs}
+    result = {"form": form, "caption": "", "company": le,
+              "top_fields": top_fields, "top_grids": top_grids, "tabs": out_tabs}
+    if per_row_detail and _records:
+        result["records"] = _records
+    return result
 
 
 # ── Excel output ─────────────────────────────────────────────────────────────
@@ -740,25 +1040,44 @@ def write_excel(data: dict, env_label: str, out_dir: Path, form: str, le: str) -
     ws.column_dimensions["A"].width = 80
 
     ws = wb.create_sheet("Fields")
-    for c, h in enumerate(["Tab", "Field", "Value", "Type"], 1):
+    for c, h in enumerate(["Tab", "Section", "Label", "Field (internal)", "Value", "Type"], 1):
         cell(ws, 1, c, h, fill=HDR, font=WHITE)
-    ws.column_dimensions["A"].width = 28; ws.column_dimensions["B"].width = 44
-    ws.column_dimensions["C"].width = 36; ws.column_dimensions["D"].width = 12
+    ws.column_dimensions["A"].width = 22
+    ws.column_dimensions["B"].width = 26
+    ws.column_dimensions["C"].width = 40
+    ws.column_dimensions["D"].width = 44
+    ws.column_dimensions["E"].width = 32
+    ws.column_dimensions["F"].width = 10
     ws.freeze_panes = "A2"
     row = 2
+    # When the form has tabs, the initial "top fields" snapshot is just the
+    # default-opened tab being captured twice. Dedupe: skip top_fields whose
+    # (internal, value) match a field already present in any tab.
+    tab_keys = set()
+    for tk, ti in (data.get("tabs") or {}).items():
+        for fv in (ti.get("fields") or {}).values():
+            tab_keys.add((fv.get("internal", ""), str(fv.get("value", ""))))
     for fk, fv in (data.get("top_fields") or {}).items():
+        key = (fv.get("internal", ""), str(fv.get("value", "")))
+        if key in tab_keys: continue
         cell(ws, row, 1, "(top)")
-        cell(ws, row, 2, fv.get("label", fk), wrap=True)
-        cell(ws, row, 3, str(fv.get("value", "")), wrap=True)
-        cell(ws, row, 4, fv.get("type", ""))
+        cell(ws, row, 2, fv.get("section", ""))
+        cell(ws, row, 3, fv.get("label", ""), wrap=True)
+        cell(ws, row, 4, fv.get("internal", fk), wrap=True)
+        cell(ws, row, 5, str(fv.get("value", "")), wrap=True)
+        cell(ws, row, 6, fv.get("type", ""))
         row += 1
     for tk, ti in (data.get("tabs") or {}).items():
         for fk, fv in (ti.get("fields") or {}).items():
             cell(ws, row, 1, ti.get("text", tk))
-            cell(ws, row, 2, fv.get("label", fk), wrap=True)
-            cell(ws, row, 3, str(fv.get("value", "")), wrap=True)
-            cell(ws, row, 4, fv.get("type", ""))
+            cell(ws, row, 2, fv.get("section", ""))
+            cell(ws, row, 3, fv.get("label", ""), wrap=True)
+            cell(ws, row, 4, fv.get("internal", fk), wrap=True)
+            cell(ws, row, 5, str(fv.get("value", "")), wrap=True)
+            cell(ws, row, 6, fv.get("type", ""))
             row += 1
+    if row > 2:
+        ws.auto_filter.ref = f"A1:F{row-1}"
 
     ws = wb.create_sheet("Grids")
     row = 1
@@ -782,6 +1101,104 @@ def write_excel(data: dict, env_label: str, out_dir: Path, form: str, le: str) -
     for tk, ti in (data.get("tabs") or {}).items():
         for gname, g in (ti.get("grids") or {}).items():
             write_grid(f"Tab: {ti.get('text', tk)} / Grid: {gname}", g)
+
+    # Master-detail per-row capture (when --per-row-detail was set).
+    records = data.get("records") or []
+    if records:
+        rws = wb.create_sheet("Records")
+        for c, h in enumerate(["Record", "Section", "Label", "Field (internal)", "Value"], 1):
+            cell(rws, 1, c, h, fill=HDR, font=WHITE)
+        rws.column_dimensions["A"].width = 32
+        rws.column_dimensions["B"].width = 26
+        rws.column_dimensions["C"].width = 40
+        rws.column_dimensions["D"].width = 44
+        rws.column_dimensions["E"].width = 32
+        rws.freeze_panes = "A2"
+        rrow = 2
+        for rec in records:
+            name = rec.get("name", "")
+            for fk, fv in (rec.get("fields") or {}).items():
+                cell(rws, rrow, 1, name)
+                cell(rws, rrow, 2, fv.get("section", ""))
+                cell(rws, rrow, 3, fv.get("label", ""), wrap=True)
+                cell(rws, rrow, 4, fv.get("internal", fk), wrap=True)
+                cell(rws, rrow, 5, str(fv.get("value", "")), wrap=True)
+                rrow += 1
+        if rrow > 2:
+            rws.auto_filter.ref = f"A1:E{rrow-1}"
+
+        # Per-record grid rows on a second sheet
+        rg = wb.create_sheet("Record grids")
+        for c, h in enumerate(["Record", "Grid", "Column", "Value"], 1):
+            cell(rg, 1, c, h, fill=HDR, font=WHITE)
+        rg.column_dimensions["A"].width = 32
+        rg.column_dimensions["B"].width = 22
+        rg.column_dimensions["C"].width = 28
+        rg.column_dimensions["D"].width = 36
+        rg.freeze_panes = "A2"
+        grow = 2
+        for rec in records:
+            name = rec.get("name", "")
+            for gname, g in (rec.get("grids") or {}).items():
+                cols = g.get("columns", [])
+                for r in g.get("rows", []):
+                    if isinstance(r, dict):
+                        for h in cols:
+                            cell(rg, grow, 1, name)
+                            cell(rg, grow, 2, gname)
+                            cell(rg, grow, 3, h)
+                            cell(rg, grow, 4, str(r.get(h, "")))
+                            grow += 1
+                    else:
+                        for c, v in enumerate(r):
+                            cell(rg, grow, 1, name)
+                            cell(rg, grow, 2, gname)
+                            cell(rg, grow, 3, cols[c] if c < len(cols) else f"col{c+1}")
+                            cell(rg, grow, 4, str(v))
+                            grow += 1
+        if grow > 2:
+            rg.auto_filter.ref = f"A1:D{grow-1}"
+
+    # Per-tab matrix sheets (InventPosting-style: "Posting type" leading column).
+    # Only emitted when posting types were discovered on a tab.
+    import re as _re_sheet
+    used_names: set = set(wb.sheetnames)
+    def _safe_sheet_name(name: str) -> str:
+        base = _re_sheet.sub(r'[\\/*?:\[\]]', '_', name)[:31] or "Tab"
+        cand = base; n = 2
+        while cand in used_names:
+            suffix = f"_{n}"
+            cand = (base[: 31 - len(suffix)]) + suffix
+            n += 1
+        used_names.add(cand)
+        return cand
+
+    for tk, ti in (data.get("tabs") or {}).items():
+        if not ti.get("has_posting_types"): continue
+        tab_label = ti.get("text", tk)
+        tws = wb.create_sheet(_safe_sheet_name(tab_label))
+        trow = 1
+        cell(tws, trow, 1, f"Tab: {tab_label}", fill=HDR, font=WHITE); trow += 1
+        for gname, g in (ti.get("grids") or {}).items():
+            cols = g.get("columns", [])
+            if cols:
+                for c, h in enumerate(cols, 1): cell(tws, trow, c, h, fill=SUB, bold=True)
+                trow += 1
+                tws.freeze_panes = tws.cell(row=trow, column=1).coordinate
+            for r in g.get("rows", []):
+                if isinstance(r, dict):
+                    for c, h in enumerate(cols, 1): cell(tws, trow, c, str(r.get(h, "")))
+                else:
+                    for c, v in enumerate(r, 1): cell(tws, trow, c, str(v))
+                trow += 1
+            trow += 1
+        # Auto-filter on the first grid's header row (best-effort).
+        if (ti.get("grids") or {}):
+            first_cols = next(iter(ti["grids"].values())).get("columns", [])
+            if first_cols:
+                tws.auto_filter.ref = f"A2:{openpyxl.utils.get_column_letter(len(first_cols))}{trow-1}"
+        for col_letter, width in zip("ABCDEFGHIJKLMN", [22, 18, 22, 22, 18, 22, 22, 22, 18, 18, 18, 18, 18, 18]):
+            tws.column_dimensions[col_letter].width = width
 
     out_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -851,6 +1268,93 @@ def write_diff_excel(per_env: List[Tuple[str, dict]], out_dir: Path, form: str, 
 
 
 # ── Form path validation (Playwright via nav search) ────────────────────────
+
+# DOM probe used by validate_form_paths to assess form shape and recommend a
+# backend. Returns a small dict of signals; _recommend_backend() turns it into
+# an (backend, flags, reason) tuple.
+_JS_FORM_SHAPE_PROBE = """() => {
+    function visible(el) {
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+    }
+    const tabs = [...document.querySelectorAll(
+        '[class*="verticalTabs"] button,'
+      + '[class*="sysTabControl"] [role="tab"],'
+      + '[role="tablist"] [role="tab"],'
+      + '[class*="tabPage"] button,'
+      + '[class*="pivot"] button'
+    )].filter(visible);
+    const tabsCount = new Set(tabs.map(t => (t.textContent||'').trim()).filter(Boolean)).size;
+
+    // Posting-type matrix: radio buttons OUTSIDE a [role="grid"]
+    const radioMatrix = [...document.querySelectorAll('div.radioButton')]
+        .filter(d => !d.closest('[role="grid"]'))
+        .filter(visible);
+    const hasRadioMatrix = radioMatrix.length >= 2;
+    const radioCount = radioMatrix.length;
+
+    // Segmented (financial-dimension) controls
+    const segmented = document.querySelectorAll(
+        '[data-dyn-controlname*="dimension" i],'
+      + '[class*="SegmentedEntry" i],'
+      + '[class*="segmentedEntry" i]'
+    ).length;
+
+    // Largest visible grid + its row count
+    const grids = [...document.querySelectorAll('[role="grid"]')].filter(visible);
+    let topGridRows = 0;
+    grids.forEach(g => {
+        const n = [...g.querySelectorAll('[role="row"]')].filter(r => !r.querySelector('[role="columnheader"]')).length;
+        if (n > topGridRows) topGridRows = n;
+    });
+
+    // Master-detail signal: a top grid AND a side panel with FastTabs/Group
+    // captions outside the grid.
+    const sidePanelFastTabs = [...document.querySelectorAll('[class*="fastTab" i], [class*="FastTab" i]')]
+        .filter(el => !el.closest('[role="grid"]'))
+        .filter(visible).length;
+    const masterDetailShape = grids.length > 0 && sidePanelFastTabs >= 2 && tabsCount === 0;
+
+    // Total input-like fields (rough)
+    const totalInputs = document.querySelectorAll(
+        'input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]),'
+      + '[role="combobox"],[role="checkbox"]'
+    ).length;
+
+    return { tabsCount, hasRadioMatrix, radioCount, segmented,
+             grids: grids.length, topGridRows, masterDetailShape,
+             sidePanelFastTabs, totalInputs };
+}"""
+
+
+def _recommend_backend(shape: dict) -> Tuple[str, str, str]:
+    """Apply deterministic rules to map a form-shape probe to a recommendation.
+    Returns (backend, flags, reason). Flags is a comma-joined string ("" if none)."""
+    tabs   = int(shape.get("tabsCount") or 0)
+    radios = int(shape.get("radioCount") or 0)
+    has_radio_matrix = bool(shape.get("hasRadioMatrix"))
+    segmented = int(shape.get("segmented") or 0)
+    top_grid_rows = int(shape.get("topGridRows") or 0)
+    master_detail = bool(shape.get("masterDetailShape"))
+
+    if has_radio_matrix:
+        return ("playwright", "",
+                f"Posting matrix — {radios} radio-driven sub-grids detected"
+                + (f" across {tabs} tabs" if tabs > 1 else ""))
+    if segmented > 0:
+        return ("playwright", "",
+                f"Financial-dimension / segmented controls ({segmented}) — MCP returns blank for these")
+    if master_detail and top_grid_rows >= 5:
+        return ("playwright", "per-row-detail",
+                f"Master-detail — top grid with {top_grid_rows} visible rows and a detail panel")
+    if top_grid_rows > 200:
+        return ("playwright", "",
+                f"Large virtualised list ({top_grid_rows}+ rows)")
+    return ("mcp", "",
+            "Parameter / setup form — MCP is faster and more complete")
+
+
 def validate_form_paths(base_url: str, le: str, paths: List[str]) -> None:
     """For each path like 'A > B > C > Form Name', open D365 nav search, type the
     last segment, pick the result whose breadcrumb matches the parents, then
@@ -984,8 +1488,20 @@ def validate_form_paths(base_url: str, le: str, paths: List[str]) -> None:
                         pass
                     print(f"RESULT|{raw}||search box not found"); continue
                 search.click()
+                # Let the search-box focus and any autocomplete flyout settle.
+                # Without this wait the first keystroke is sometimes consumed by
+                # the dropdown that appears on focus (observed: "Vendor groups"
+                # becoming "endor groups").
+                page.wait_for_timeout(200)
                 search.fill("")
-                search.type(terminal, delay=30)
+                page.wait_for_timeout(150)
+                # press_sequentially emits proper keydown/keypress/keyup events
+                # so D365's input listener sees every character.
+                try:
+                    search.press_sequentially(terminal, delay=60)
+                except Exception:
+                    # Fallback for older Playwright versions.
+                    search.type(terminal, delay=60)
                 # Wait for the nav-search results to appear. F&O renders results in a
                 # portal/flyout that is NOT inside the navigationSearch container, so
                 # we use a broad selector and filter by breadcrumb shape below.
@@ -1084,6 +1600,18 @@ def validate_form_paths(base_url: str, le: str, paths: List[str]) -> None:
                     print(f"RESULT|{raw}||unexpected mi after click: {mi}"); continue
                 print(f"  OK {raw}  ->  {mi}")
                 print(f"RESULT|{raw}|{mi}|")
+
+                # Form-shape probe: assess the form's structure and recommend
+                # MCP vs Playwright. Emits an ADVICE| line so the extension can
+                # surface the recommendation in the path list and pre-select
+                # the right backend in the Extract QuickPick.
+                try:
+                    page.wait_for_timeout(800)  # let form settle after click
+                    shape = page.evaluate(_JS_FORM_SHAPE_PROBE) or {}
+                    backend, flags, reason = _recommend_backend(shape)
+                    print(f"ADVICE|{raw}|{backend}|{flags}|{reason}")
+                except Exception as e:
+                    print(f"ADVICE|{raw}|||probe failed: {type(e).__name__}: {e}")
             except Exception as e:
                 print(f"RESULT|{raw}||{type(e).__name__}: {e}")
 
@@ -1100,6 +1628,10 @@ def main():
     p.add_argument("--form-path", default="")
     p.add_argument("--out-dir")
     p.add_argument("--diff", action="store_true")
+    p.add_argument("--per-row-detail", action="store_true",
+                   help="Master-detail: click each row in the top grid and capture the detail panel (Playwright only)")
+    p.add_argument("--max-records", type=int, default=500,
+                   help="Max rows to iterate when --per-row-detail is set (default 500)")
     args = p.parse_args()
 
     envs: List[Tuple[str, str, Optional[str], Optional[str]]] = []
@@ -1136,7 +1668,9 @@ def main():
             client = McpClient(base_url, label, tenant, mcp_url)
             data = extract_mcp(client, args.form, args.le)
         else:
-            data = extract_playwright(base_url, label, args.form, args.le)
+            data = extract_playwright(base_url, label, args.form, args.le,
+                                       per_row_detail=args.per_row_detail,
+                                       max_records=args.max_records)
         path = write_excel(data, label, out_dir, args.form, args.le)
         print(f"Saved: {path}")
         per_env.append((label, data))

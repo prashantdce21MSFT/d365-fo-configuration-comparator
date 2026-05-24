@@ -61,7 +61,7 @@ in `python/extract.py`.
 
 1. Creates one shared `OutputChannel` named **D365 FO Config Compare**.
 2. If `globalState.welcomeShown` is false, schedules the walkthrough
-   `prashant-verma-aibs.d365-form-extractor#d365FormExtractor.gettingStarted`
+   `prashant-verma.d365-form-extractor#d365FormExtractor.gettingStarted`
    to open after ~1.2 s, then flips the flag.
 3. Registers all 7 commands:
 

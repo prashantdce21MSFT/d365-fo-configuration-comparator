@@ -6,8 +6,23 @@ import { runExtraction } from "./extractor";
 import { startChromeCdp } from "./chrome";
 import { configureFormPaths } from "./formPaths";
 
-const EXT_ID = "prashant-verma-aibs.d365-form-extractor";
+const EXT_ID = "PrashantVerma.d365-form-extractor";
 const WALKTHROUGH_ID = `${EXT_ID}#d365FormExtractor.gettingStarted`;
+
+const DISCLAIMER_LINES = [
+    "============================================================",
+    " D365 FO Config Compare  (Beta)  --  USE AT YOUR OWN RISK",
+    "============================================================",
+    " This is an INDEPENDENT, COMMUNITY-BUILT tool.",
+    " It is NOT a standard out-of-the-box Microsoft product,",
+    " not affiliated with, endorsed by, or supported by Microsoft.",
+    " Provided AS IS under the MIT license, with no warranty.",
+    " NOT recommended for production environments --",
+    " validate against UAT or a read-replica first.",
+    " 'Microsoft' and 'Dynamics 365' are trademarks of",
+    " Microsoft Corporation, used here only descriptively.",
+    "============================================================",
+];
 
 async function openWalkthrough() {
     await vscode.commands.executeCommand("workbench.action.openWalkthrough", WALKTHROUGH_ID, false);
@@ -37,6 +52,33 @@ async function scaffoldWorkspace() {
 export function activate(context: vscode.ExtensionContext) {
     const out = vscode.window.createOutputChannel("D365 FO Config Compare");
     context.subscriptions.push(out);
+    for (const line of DISCLAIMER_LINES) { out.appendLine(line); }
+    out.appendLine("");
+
+    // Persistent status-bar indicator -- always visible, clickable for full disclaimer
+    const statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+    statusItem.text = "$(warning) D365 Config Compare (Beta — not a Microsoft product)";
+    statusItem.tooltip = "Independent community tool. NOT a Microsoft product. Provided AS IS under MIT, no warranty. Not for production. Click for details.";
+    statusItem.command = "d365FormExtractor.showDisclaimer";
+    statusItem.backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
+    statusItem.show();
+    context.subscriptions.push(statusItem);
+
+    // Show disclaimer toast on every activation until the user acknowledges it
+    if (!context.globalState.get<boolean>("disclaimerAcknowledged")) {
+        out.show(true);
+        vscode.window.showWarningMessage(
+            "D365 FO Config Compare is an independent community tool (NOT a Microsoft product). Provided AS IS, no warranty. Not recommended for production — use UAT/read-replica first.",
+            { modal: false },
+            "I Understand", "View Details"
+        ).then(choice => {
+            if (choice === "I Understand") {
+                context.globalState.update("disclaimerAcknowledged", true);
+            } else if (choice === "View Details") {
+                out.show(true);
+            }
+        });
+    }
 
     // Open walkthrough on first activation
     if (!context.globalState.get<boolean>("welcomeShown")) {
@@ -44,6 +86,17 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     context.subscriptions.push(
+        vscode.commands.registerCommand("d365FormExtractor.showDisclaimer", async () => {
+            out.show(true);
+            const r = await vscode.window.showWarningMessage(
+                "D365 FO Config Compare — independent community tool, NOT a Microsoft product. Provided AS IS under MIT, no warranty. Not recommended for production environments.",
+                { modal: true, detail: DISCLAIMER_LINES.join("\n") },
+                "I Understand"
+            );
+            if (r === "I Understand") {
+                await context.globalState.update("disclaimerAcknowledged", true);
+            }
+        }),
         vscode.commands.registerCommand("d365FormExtractor.onboard", async () => {
             await runOnboarding(context, out);
         }),

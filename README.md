@@ -2,6 +2,8 @@
 
 > 🚧 **Beta** — actively developed. Expect rapid iteration; please report issues.
 
+> ⚠️ **Disclaimer — use at your own risk.** This is an independent, community-built tool. It is **not a standard out-of-the-box Microsoft product**, not affiliated with, endorsed by, or supported by Microsoft. The software is provided **AS IS** under the MIT license, with no warranty of any kind. **Not recommended for production environments** — validate against UAT or a read-replica first. "Microsoft", "Dynamics 365", and related names are trademarks of Microsoft Corporation, used here only for descriptive purposes.
+
 Extract **Microsoft Dynamics 365 Finance & Operations** form configurations from one or more environments and compare them side-by-side in Excel — straight from VS Code.
 
 > 📘 **Read the [Master Guide](MASTER_GUIDE.md)** for the complete story: business problem, full architecture, both backends in deep detail, every gotcha we hit, and the original Python pipeline (preserved in [`archive/`](archive/)).

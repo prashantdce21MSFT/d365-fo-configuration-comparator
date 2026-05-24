@@ -8,6 +8,12 @@ export interface FormPathEntry {
     menuItem?: string;
     validated?: boolean;
     error?: string;
+    /** Backend recommendation derived from a Playwright DOM probe during validation. */
+    recommendedBackend?: "mcp" | "playwright";
+    /** Comma-joined flag list, e.g. "per-row-detail". Empty when no extras. */
+    recommendedFlags?: string;
+    /** Human-readable rationale, e.g. "Posting matrix \u2014 11 radio-driven sub-grids". */
+    recommendedReason?: string;
 }
 
 export async function configureFormPaths(context: vscode.ExtensionContext, out: vscode.OutputChannel): Promise<void> {
@@ -80,11 +86,29 @@ export async function configureFormPaths(context: vscode.ExtensionContext, out: 
             child.on("close", (code) => {
                 if (code !== 0) return reject(new Error(`validate exited with code ${code}`));
                 // Parse RESULT lines: RESULT|path|menuItem|error
+                // Parse ADVICE lines: ADVICE|path|backend|flags|reason
                 const out: FormPathEntry[] = [];
+                const adviceByPath = new Map<string, { backend?: "mcp" | "playwright"; flags?: string; reason?: string }>();
                 for (const ln of buf.split(/\r?\n/)) {
+                    if (ln.startsWith("ADVICE|")) {
+                        const parts = ln.split("|");
+                        const p = parts[1];
+                        const b = (parts[2] || "").trim();
+                        const backend = (b === "mcp" || b === "playwright") ? b : undefined;
+                        adviceByPath.set(p, { backend, flags: parts[3] || "", reason: parts[4] || "" });
+                        continue;
+                    }
                     if (!ln.startsWith("RESULT|")) continue;
                     const parts = ln.split("|");
                     out.push({ path: parts[1], menuItem: parts[2] || undefined, validated: !!parts[2], error: parts[3] || undefined });
+                }
+                // Attach advice to matching RESULT entries.
+                for (const r of out) {
+                    const a = adviceByPath.get(r.path);
+                    if (!a) continue;
+                    r.recommendedBackend = a.backend;
+                    r.recommendedFlags = a.flags || undefined;
+                    r.recommendedReason = a.reason || undefined;
                 }
                 resolve(out);
             });

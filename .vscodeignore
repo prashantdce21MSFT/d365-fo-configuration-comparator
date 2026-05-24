@@ -9,3 +9,12 @@ src/**
 node_modules/**
 .git/**
 **/.DS_Store
+# local-only scratch / research / data — never ship
+_research/**
+d365-extracts/**
+_chrome_profile/**
+.claude/**
+**/*.vsix
+archive/**
+Test/**
+package-lock.json

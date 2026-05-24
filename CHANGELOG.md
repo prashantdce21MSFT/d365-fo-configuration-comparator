@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.3 — 2026-05-18
+
+- **Playwright — posting-matrix forms**: new `_JS_POSTING_TYPES` loop iterates the left-side radio list on forms like `InventPosting`, capturing every posting type's matrix (verified: 59 posting types, 103+ rows on `InventPosting`).
+- **Playwright — grid column alignment**: matrix cells now align to headers by position (with empty structural columns dropped) so the `Main account` segmented column populates correctly.
+- **Playwright — per-tab Excel sheets** for matrix forms with a leading `Posting type` column + auto-filter.
+- **Playwright — master-detail iteration**: new `--per-row-detail` flag (default cap `--max-records 500`) clicks each row in the top grid and captures the detail panel into `Records` + `Record grids` sheets.
+- **Fields sheet readability**: excludes grid-cell inputs, radio widgets, and page-chrome search boxes; adds `Label` (UI text) and `Field (internal)` columns; better section detection; deduped top-fields vs first-tab fields; auto-filter enabled.
+- **Form-path validator**: fixed missing-first-character bug by switching to `press_sequentially()` with focus settle.
+- **Backend advisor**: `validate_form_paths` now emits an `ADVICE|<path>|<backend>|<flags>|<reason>` line per validated form. The Extract picker pre-selects the recommended backend and auto-passes `--per-row-detail` when advised. Recommendations persist in `formPaths` settings.
+- **Empty posting-type placeholders**: posting types with 0 rows are still listed in the per-tab sheet so consultants can see the full radio list.
+
 ## 0.7.0 — 2026-05-13
 
 - **Deep MCP extraction**: recursively walks every Tab / FastTab / Group / ReferenceGroup, merging nested fields and grids. Per-tab progress is logged.

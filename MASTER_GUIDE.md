@@ -64,7 +64,7 @@ Manually opening **606 forms × 2 environments × 3 legal entities (MY30, MY60, 
 | **Phase 2 — Team guide** | Apr 30 | [`TEAM_GUIDE_D365_Config_Drift_Analysis.md`](archive/docs/TEAM_GUIDE_D365_Config_Drift_Analysis.md) authored (.md + .docx + .pdf). **`form_control_extractor.py` (53.8 KB)** matures — this is the engine later ported into the VS Code extension. |
 | **Phase 3 — Form/table mapping + mass extraction** | May 1 – May 4 | `build_form_mapping.py`, `build_tables_mapping.py`, `deep_extract_parameters.py`, `batch_extract_asset_fa.py`. 30+ Excel outputs produced for Asset & FA module. |
 | **Phase 4 — MCP vs Playwright study** | May 11 | [`D365_ERP_MCP_vs_Playwright_Comparison.docx`](archive/docs/D365_ERP_MCP_vs_Playwright_Comparison.docx) — formal comparison report. Key finding: neither tool is universally better; use both selectively. |
-| **Phase 5 — Extension inception** | May 11 (evening) | First VS Code extension scaffold. Publisher = "Prashant Verma AIBS". |
+| **Phase 5 — Extension inception** | May 11 (evening) | First VS Code extension scaffold. Publisher = "Prashant Verma". |
 | **Phase 6 — Polish & ship** | May 12 – May 13 | Multiple chat sessions: description, error fixes, walkthrough scaffolding ("dataverse-onboarding-style"). Spawned sibling tool [C:\Bugs daily report] for ADO 6 AM SGT email automation. |
 | **Phase 7 — Productisation** | May 13 | Validator hardening → multi-select → deep MCP port (5-stage pipeline) → rename to "D365 FO Config Compare" → new icon → Beta marking → public GitHub repo → SKILL.md → this master guide. |
 

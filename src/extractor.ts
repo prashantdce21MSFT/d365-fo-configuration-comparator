@@ -84,18 +84,40 @@ export async function runExtraction(
 
     // Pick form: use saved form paths if available, else free text.
     // Multi-select supported — selecting N validated paths runs N extractions sequentially.
-    const savedPaths = cfg.get<{ path: string; menuItem?: string; validated?: boolean }[]>("formPaths") || [];
-    type FormJob = { form: string; formPath?: string };
+    const savedPaths = cfg.get<{
+        path: string;
+        menuItem?: string;
+        validated?: boolean;
+        recommendedBackend?: "mcp" | "playwright";
+        recommendedFlags?: string;
+        recommendedReason?: string;
+    }[]>("formPaths") || [];
+    type FormJob = {
+        form: string;
+        formPath?: string;
+        recommendedBackend?: "mcp" | "playwright";
+        recommendedFlags?: string;
+        recommendedReason?: string;
+    };
     const jobs: FormJob[] = [];
     const validated = savedPaths.filter(p => p.validated && p.menuItem);
     if (validated.length > 0) {
-        const items = validated.map(p => ({
-            label: `$(check) ${p.path}`,
-            description: `mi=${p.menuItem}`,
-            mi: p.menuItem!,
-            pathTxt: p.path,
-            picked: false,
-        }));
+        const items = validated.map(p => {
+            const adviceTag = p.recommendedBackend
+                ? `  • ${p.recommendedBackend === "mcp" ? "MCP" : "Playwright"}${p.recommendedFlags ? " + " + p.recommendedFlags : ""}`
+                : "";
+            return {
+                label: `$(check) ${p.path}`,
+                description: `mi=${p.menuItem}${adviceTag}`,
+                detail: p.recommendedReason || undefined,
+                mi: p.menuItem!,
+                pathTxt: p.path,
+                recommendedBackend: p.recommendedBackend,
+                recommendedFlags: p.recommendedFlags,
+                recommendedReason: p.recommendedReason,
+                picked: false,
+            };
+        });
         const picks = await vscode.window.showQuickPick(items, {
             title: "Pick form(s)",
             placeHolder: "Select one or more validated form paths (Space to toggle, Enter to confirm). Pick none to enter manually.",
@@ -103,7 +125,13 @@ export async function runExtraction(
             ignoreFocusOut: true,
         });
         if (picks === undefined) return; // cancelled
-        for (const p of picks) jobs.push({ form: p.mi, formPath: p.pathTxt });
+        for (const p of picks) jobs.push({
+            form: p.mi,
+            formPath: p.pathTxt,
+            recommendedBackend: p.recommendedBackend,
+            recommendedFlags: p.recommendedFlags,
+            recommendedReason: p.recommendedReason,
+        });
     }
     if (jobs.length === 0) {
         const f = await vscode.window.showInputBox({
@@ -134,24 +162,33 @@ export async function runExtraction(
     );
     if (!envPicks || envPicks.length === 0) return;
 
-    // Backend choice
+    // Backend choice — if all selected jobs share a single recommendation,
+    // use it as the default; otherwise show the picker.
     let backend = cfg.get<string>("defaultBackend") || "ask";
+    const recBackends = new Set(jobs.map(j => j.recommendedBackend).filter(Boolean));
+    const consensusBackend: "mcp" | "playwright" | undefined =
+        recBackends.size === 1 ? (jobs.find(j => j.recommendedBackend)!.recommendedBackend) : undefined;
     if (backend === "ask") {
-        const pick = await vscode.window.showQuickPick(
-            [
-                {
-                    label: "$(database) D365 ERP MCP",
-                    description: "Headless. Uses 'az account get-access-token'.",
-                    id: "mcp",
-                },
-                {
-                    label: "$(browser) Playwright (Chrome CDP)",
-                    description: "Drives your logged-in Chrome on port 9222.",
-                    id: "playwright",
-                },
-            ],
-            { title: "Extraction backend", ignoreFocusOut: true }
-        );
+        const items = [
+            {
+                label: "$(database) D365 ERP MCP",
+                description: "Headless. Uses 'az account get-access-token'.",
+                id: "mcp",
+                picked: consensusBackend === "mcp",
+            },
+            {
+                label: "$(browser) Playwright (Chrome CDP)",
+                description: "Drives your logged-in Chrome on port 9222.",
+                id: "playwright",
+                picked: consensusBackend === "playwright",
+            },
+        ];
+        if (consensusBackend) {
+            const idx = items.findIndex(it => it.id === consensusBackend);
+            const reason = jobs.find(j => j.recommendedReason)?.recommendedReason;
+            items[idx].description += `  — ✨ recommended${reason ? ": " + reason : ""}`;
+        }
+        const pick = await vscode.window.showQuickPick(items, { title: "Extraction backend", ignoreFocusOut: true });
         if (!pick) return;
         backend = pick.id;
     }
@@ -181,7 +218,7 @@ export async function runExtraction(
     const failed: string[] = [];
 
     for (let i = 0; i < jobs.length; i++) {
-        const { form, formPath } = jobs[i];
+        const { form, formPath, recommendedFlags } = jobs[i];
         const args: string[] = [
             scriptPath,
             "--backend", backend,
@@ -190,6 +227,10 @@ export async function runExtraction(
             "--out-dir", outFolder,
         ];
         if (formPath) args.push("--form-path", formPath);
+        // Auto-pass --per-row-detail when Playwright was recommended with that flag.
+        if (backend === "playwright" && (recommendedFlags || "").split(",").map(s => s.trim()).includes("per-row-detail")) {
+            args.push("--per-row-detail");
+        }
         for (const e of envPicks) {
             const t = (e.env as any).tenantId as string | undefined;
             const m = (e.env as any).mcpUrl as string | undefined;
