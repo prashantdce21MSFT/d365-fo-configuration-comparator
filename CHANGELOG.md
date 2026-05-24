@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.4 — 2026-05-24
+
+- **Disclaimer surfaced inside the extension**: status-bar warning indicator (always visible), activation toast (until acknowledged), Output channel banner (auto-opens on first run), new `D365 FO Config Compare: Show Disclaimer` command, and disclaimer block in walkthrough Step 1. Makes it explicit this is an independent community tool — not a Microsoft product, provided AS IS, not for production.
+- **README**: prominent disclaimer banner at the top.
+- **Packaging**: excluded `Test/**` from the published `.vsix` (was shipping ~40 sample xlsx files).
+- **Publisher ID**: fixed casing to `PrashantVerma` to match the Marketplace account.
+
 ## 0.8.3 — 2026-05-18
 
 - **Playwright — posting-matrix forms**: new `_JS_POSTING_TYPES` loop iterates the left-side radio list on forms like `InventPosting`, capturing every posting type's matrix (verified: 59 posting types, 103+ rows on `InventPosting`).
