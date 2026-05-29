@@ -1,4 +1,4 @@
-# Step 5 — Extract one or many forms
+﻿# Step 5 — Extract one or many forms
 
 Run **Extract Form**:
 
@@ -16,7 +16,7 @@ For each form, the deep extractor:
 - Paginates every grid (up to 200 pages, deduped)
 - Sweeps ~146 search terms via `form_find_controls` to find hidden fields
 
-Per-tab progress is logged in the **D365 FO Config Compare** output channel:
+Per-tab progress is logged in the **D365 FO Configuration Comparator** output channel:
 
 ```
 [3/7] Vendors: 45 fields, 1 grid(s)

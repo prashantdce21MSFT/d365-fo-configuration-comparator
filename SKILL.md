@@ -1,4 +1,4 @@
-# SKILL.md — D365 FO Config Compare
+﻿# SKILL.md — D365 FO Configuration Comparator
 
 > **Domain knowledge for working on / with this VS Code extension.** Covers the business problem, the two extraction backends (MCP + Playwright), their internals, and the lessons learned shipping it.
 
@@ -130,7 +130,7 @@ No app registration, no secret stored. Every run asks `az` fresh. The token is p
 playwright.chromium.connect_over_cdp("http://localhost:9222")
 ```
 
-User runs `D365 FO Config Compare: Start Chrome with Remote Debugging`, which:
+User runs `D365 FO Configuration Comparator: Start Chrome with Remote Debugging`, which:
 1. Closes any running Chrome.
 2. Relaunches with `--remote-debugging-port=9222 --user-data-dir=<profile>`.
 3. User signs in to D365 once in that Chrome. Playwright attaches to the same session.

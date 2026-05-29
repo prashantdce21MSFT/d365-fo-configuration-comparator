@@ -1,4 +1,4 @@
-import * as vscode from "vscode";
+﻿import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -69,7 +69,7 @@ export async function showWelcome(context: vscode.ExtensionContext): Promise<voi
         }));
         items.push({ label: "$(check) Close", run: undefined });
         const pick = await vscode.window.showQuickPick(items, {
-            title: "D365 FO Config Compare — Getting Started",
+            title: "D365 FO Configuration Comparator — Getting Started",
             placeHolder: "Pick a step to run, or Close",
             ignoreFocusOut: true,
             matchOnDetail: true,

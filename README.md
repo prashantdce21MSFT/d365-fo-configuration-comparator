@@ -1,4 +1,4 @@
-# D365 FO Config Compare
+﻿# D365 FO Configuration Comparator
 
 > 🚧 **Beta** — actively developed. Expect rapid iteration; please report issues.
 
@@ -44,13 +44,13 @@ Extract **Microsoft Dynamics 365 Finance & Operations** form configurations from
 
 | # | Command | What it does |
 |---|---|---|
-| 1 | `D365 FO Config Compare: Getting Started` | Opens the step-by-step walkthrough |
-| 2 | `D365 FO Config Compare: Create / Open Workspace Folder` | Scaffolds `.vscode/settings.json` |
-| 3 | `D365 FO Config Compare: Run Onboarding` | Python deps + `az login` + environment registration + MCP probe |
-| 4 | `D365 FO Config Compare: Start Chrome with Remote Debugging` | Closes Chrome, relaunches with `--remote-debugging-port=9222` |
-| 5 | `D365 FO Config Compare: Configure Form Paths` | Paste UI paths; auto-discovers `mi=...` |
-| 6 | `D365 FO Config Compare: Extract Form` | Multi-select forms + environments, then **pick a backend at run-time: D365 ERP MCP (headless, recommended) or Playwright (Chrome CDP)** |
-| — | `D365 FO Config Compare: Clear Saved Settings` | Reset everything (use only to start over) |
+| 1 | `D365 FO Configuration Comparator: Getting Started` | Opens the step-by-step walkthrough |
+| 2 | `D365 FO Configuration Comparator: Create / Open Workspace Folder` | Scaffolds `.vscode/settings.json` |
+| 3 | `D365 FO Configuration Comparator: Run Onboarding` | Python deps + `az login` + environment registration + MCP probe |
+| 4 | `D365 FO Configuration Comparator: Start Chrome with Remote Debugging` | Closes Chrome, relaunches with `--remote-debugging-port=9222` |
+| 5 | `D365 FO Configuration Comparator: Configure Form Paths` | Paste UI paths; auto-discovers `mi=...` |
+| 6 | `D365 FO Configuration Comparator: Extract Form` | Multi-select forms + environments, then **pick a backend at run-time: D365 ERP MCP (headless, recommended) or Playwright (Chrome CDP)** |
+| — | `D365 FO Configuration Comparator: Clear Saved Settings` | Reset everything (use only to start over) |
 
 ---
 

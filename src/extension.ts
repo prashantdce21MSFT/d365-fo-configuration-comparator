@@ -1,4 +1,4 @@
-import * as vscode from "vscode";
+﻿import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import { runOnboarding, ensureOnboarded } from "./onboarding";
@@ -11,7 +11,7 @@ const WALKTHROUGH_ID = `${EXT_ID}#d365FormExtractor.gettingStarted`;
 
 const DISCLAIMER_LINES = [
     "============================================================",
-    " D365 FO Config Compare  (Beta)  --  USE AT YOUR OWN RISK",
+    " D365 FO Configuration Comparator  (Beta)  --  USE AT YOUR OWN RISK",
     "============================================================",
     " This is an INDEPENDENT, COMMUNITY-BUILT tool.",
     " It is NOT a standard out-of-the-box Microsoft product,",
@@ -50,7 +50,7 @@ async function scaffoldWorkspace() {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-    const out = vscode.window.createOutputChannel("D365 FO Config Compare");
+    const out = vscode.window.createOutputChannel("D365 FO Configuration Comparator");
     context.subscriptions.push(out);
     for (const line of DISCLAIMER_LINES) { out.appendLine(line); }
     out.appendLine("");
@@ -68,7 +68,7 @@ export function activate(context: vscode.ExtensionContext) {
     if (!context.globalState.get<boolean>("disclaimerAcknowledged")) {
         out.show(true);
         vscode.window.showWarningMessage(
-            "D365 FO Config Compare is an independent community tool (NOT a Microsoft product). Provided AS IS, no warranty. Not recommended for production — use UAT/read-replica first.",
+            "D365 FO Configuration Comparator is an independent community tool (NOT a Microsoft product). Provided AS IS, no warranty. Not recommended for production — use UAT/read-replica first.",
             { modal: false },
             "I Understand", "View Details"
         ).then(choice => {
@@ -89,7 +89,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand("d365FormExtractor.showDisclaimer", async () => {
             out.show(true);
             const r = await vscode.window.showWarningMessage(
-                "D365 FO Config Compare — independent community tool, NOT a Microsoft product. Provided AS IS under MIT, no warranty. Not recommended for production environments.",
+                "D365 FO Configuration Comparator — independent community tool, NOT a Microsoft product. Provided AS IS under MIT, no warranty. Not recommended for production environments.",
                 { modal: true, detail: DISCLAIMER_LINES.join("\n") },
                 "I Understand"
             );
@@ -125,7 +125,7 @@ export function activate(context: vscode.ExtensionContext) {
             await context.globalState.update("onboarded", false);
             await context.globalState.update("welcomeShown", false);
             const r = await vscode.window.showInformationMessage(
-                "D365 FO Config Compare settings cleared. Start fresh now?",
+                "D365 FO Configuration Comparator settings cleared. Start fresh now?",
                 "Start Getting Started", "Later"
             );
             if (r === "Start Getting Started") {

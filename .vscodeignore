@@ -18,3 +18,6 @@ _chrome_profile/**
 archive/**
 Test/**
 package-lock.json
+# python/ — only ship extract.py (the runtime entry point); exclude diagnostics/research
+python/**
+!python/extract.py

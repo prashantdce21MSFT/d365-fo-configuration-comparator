@@ -1,4 +1,4 @@
-import * as vscode from "vscode";
+﻿import * as vscode from "vscode";
 import * as https from "https";
 import { spawn } from "child_process";
 
@@ -326,7 +326,7 @@ export async function ensureOnboarded(
     const done = context.globalState.get<boolean>("onboarded", false);
     if (done) return true;
     const choice = await vscode.window.showInformationMessage(
-        "D365 FO Config Compare is not configured yet. Run onboarding now?",
+        "D365 FO Configuration Comparator is not configured yet. Run onboarding now?",
         "Run Onboarding",
         "Cancel"
     );
@@ -339,7 +339,7 @@ export async function runOnboarding(
     out: vscode.OutputChannel
 ): Promise<boolean> {
     out.show(true);
-    out.appendLine("=== D365 FO Config Compare — Onboarding ===");
+    out.appendLine("=== D365 FO Configuration Comparator — Onboarding ===");
 
     const TOTAL = 8;
     const cfg = () => vscode.workspace.getConfiguration("d365FormExtractor");
@@ -640,7 +640,7 @@ export async function runOnboarding(
     await context.globalState.update("onboarded", true);
     out.appendLine("\n=== Onboarding complete ===");
     vscode.window.showInformationMessage(
-        "D365 FO Config Compare onboarding complete. Run 'D365: Extract Form' to begin."
+        "D365 FO Configuration Comparator onboarding complete. Run 'D365: Extract Form' to begin."
     );
     return true;
 }

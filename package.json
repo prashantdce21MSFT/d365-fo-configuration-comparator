@@ -1,8 +1,8 @@
 {
   "name": "d365-form-extractor",
-  "displayName": "D365 FO Config Compare (Beta)",
+  "displayName": "D365 FO Configuration Comparator",
   "description": "[BETA] Extract and compare Microsoft Dynamics 365 Finance & Operations form configurations across environments using D365 ERP MCP or Playwright (Chrome DevTools Protocol). Authenticates via Azure CLI \u2014 no app registration required.",
-  "version": "0.8.4",
+  "version": "0.8.7",
   "preview": true,
   "publisher": "PrashantVerma",
   "author": {
@@ -37,47 +37,47 @@
     "commands": [
       {
         "command": "d365FormExtractor.extract",
-        "title": "D365 FO Config Compare: Extract Form",
+        "title": "D365 FO Configuration Comparator: Extract Form",
         "category": "D365"
       },
       {
         "command": "d365FormExtractor.onboard",
-        "title": "D365 FO Config Compare: Run Onboarding",
+        "title": "D365 FO Configuration Comparator: Run Onboarding",
         "category": "D365"
       },
       {
         "command": "d365FormExtractor.startChromeCdp",
-        "title": "D365 FO Config Compare: Start Chrome with Remote Debugging",
+        "title": "D365 FO Configuration Comparator: Start Chrome with Remote Debugging",
         "category": "D365"
       },
       {
         "command": "d365FormExtractor.clearSettings",
-        "title": "D365 FO Config Compare: Clear Saved Settings",
+        "title": "D365 FO Configuration Comparator: Clear Saved Settings",
         "category": "D365"
       },
       {
         "command": "d365FormExtractor.showDisclaimer",
-        "title": "D365 FO Config Compare: Show Disclaimer",
+        "title": "D365 FO Configuration Comparator: Show Disclaimer",
         "category": "D365"
       },
       {
         "command": "d365FormExtractor.configureFormPaths",
-        "title": "D365 FO Config Compare: Configure Form Paths",
+        "title": "D365 FO Configuration Comparator: Configure Form Paths",
         "category": "D365"
       },
       {
         "command": "d365FormExtractor.welcome",
-        "title": "D365 FO Config Compare: Getting Started",
+        "title": "D365 FO Configuration Comparator: Getting Started",
         "category": "D365"
       },
       {
         "command": "d365FormExtractor.scaffoldWorkspace",
-        "title": "D365 FO Config Compare: Create / Open Workspace Folder",
+        "title": "D365 FO Configuration Comparator: Create / Open Workspace Folder",
         "category": "D365"
       }
     ],
     "configuration": {
-      "title": "D365 FO Config Compare",
+      "title": "D365 FO Configuration Comparator",
       "properties": {
         "d365FormExtractor.pythonPath": {
           "type": "string",
@@ -159,7 +159,7 @@
     "walkthroughs": [
       {
         "id": "d365FormExtractor.gettingStarted",
-        "title": "Get Started with D365 FO Config Compare",
+        "title": "Get Started with D365 FO Configuration Comparator",
         "description": "Set up your workspace and extract D365 F&O form configurations for cross-environment comparison.",
         "steps": [
           {

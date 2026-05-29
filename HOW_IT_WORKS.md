@@ -1,4 +1,4 @@
-# How the Extension Works — Technical Flow
+﻿# How the Extension Works — Technical Flow
 
 > Companion to [`MASTER_GUIDE.md`](MASTER_GUIDE.md). This file focuses **only** on
 > what the shipped VS Code extension does at runtime — every command, every
@@ -59,7 +59,7 @@ in `python/extract.py`.
 `activate(context)` in [src/extension.ts](src/extension.ts) runs on
 `onStartupFinished`:
 
-1. Creates one shared `OutputChannel` named **D365 FO Config Compare**.
+1. Creates one shared `OutputChannel` named **D365 FO Configuration Comparator**.
 2. If `globalState.welcomeShown` is false, schedules the walkthrough
    `prashant-verma.d365-form-extractor#d365FormExtractor.gettingStarted`
    to open after ~1.2 s, then flips the flag.

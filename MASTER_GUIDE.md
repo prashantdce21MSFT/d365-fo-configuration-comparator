@@ -1,4 +1,4 @@
-# D365 FO Config Compare — Master Guide
+﻿# D365 FO Configuration Comparator — Master Guide
 
 > **The complete story.** Business problem, full project history, architecture, both backends (MCP & Playwright) in deep detail, every gotcha we hit, the original Python pipeline, and how it all became a VS Code extension.
 
@@ -66,7 +66,7 @@ Manually opening **606 forms × 2 environments × 3 legal entities (MY30, MY60, 
 | **Phase 4 — MCP vs Playwright study** | May 11 | [`D365_ERP_MCP_vs_Playwright_Comparison.docx`](archive/docs/D365_ERP_MCP_vs_Playwright_Comparison.docx) — formal comparison report. Key finding: neither tool is universally better; use both selectively. |
 | **Phase 5 — Extension inception** | May 11 (evening) | First VS Code extension scaffold. Publisher = "Prashant Verma". |
 | **Phase 6 — Polish & ship** | May 12 – May 13 | Multiple chat sessions: description, error fixes, walkthrough scaffolding ("dataverse-onboarding-style"). Spawned sibling tool [C:\Bugs daily report] for ADO 6 AM SGT email automation. |
-| **Phase 7 — Productisation** | May 13 | Validator hardening → multi-select → deep MCP port (5-stage pipeline) → rename to "D365 FO Config Compare" → new icon → Beta marking → public GitHub repo → SKILL.md → this master guide. |
+| **Phase 7 — Productisation** | May 13 | Validator hardening → multi-select → deep MCP port (5-stage pipeline) → rename to "D365 FO Configuration Comparator" → new icon → Beta marking → public GitHub repo → SKILL.md → this master guide. |
 
 ---
 
@@ -160,7 +160,7 @@ This section consolidates the May 11 study with what we learned during productis
 
 > **Neither is universally superior. Let the user pick per form.**
 
-The extension surfaces this choice at run-time (`D365 FO Config Compare: Extract Form` → backend picker). The recommendation is:
+The extension surfaces this choice at run-time (`D365 FO Configuration Comparator: Extract Form` → backend picker). The recommendation is:
 
 - **Default to MCP.** It's headless, deterministic, structured, and the deep extraction port now matches the original Python extractor's coverage.
 - **Switch to Playwright** when MCP returns empty tabs, when the form has financial-dimension segmented controls, when you want to *see* the extraction, or when MCP isn't enabled on that tenant.
@@ -267,7 +267,7 @@ This is needed for **per-row detail extraction** (each row's General/Address/etc
 playwright.chromium.connect_over_cdp("http://localhost:9222")
 ```
 
-Prereq: `D365 FO Config Compare: Start Chrome with Remote Debugging` (or the legacy `start_chrome_cdp.bat`) — closes any running Chrome, relaunches with `--remote-debugging-port=9222 --user-data-dir=<profile>`. User signs in once; Playwright attaches.
+Prereq: `D365 FO Configuration Comparator: Start Chrome with Remote Debugging` (or the legacy `start_chrome_cdp.bat`) — closes any running Chrome, relaunches with `--remote-debugging-port=9222 --user-data-dir=<profile>`. User signs in once; Playwright attaches.
 
 ### 6.2 Navigation
 
@@ -545,13 +545,13 @@ Key files (in order of importance):
 
 ### Commands (in execution order)
 
-1. `D365 FO Config Compare: Getting Started` — opens walkthrough
-2. `D365 FO Config Compare: Create / Open Workspace Folder` — scaffolds `.vscode/settings.json`
-3. `D365 FO Config Compare: Run Onboarding` — deps + `az login` + envs + `/mcp` probe
-4. `D365 FO Config Compare: Start Chrome with Remote Debugging` — `:9222` Chrome
-5. `D365 FO Config Compare: Configure Form Paths` — paste UI paths, auto-discover `mi=`
-6. `D365 FO Config Compare: Extract Form` — multi-select forms + envs + backend
-7. `D365 FO Config Compare: Clear Saved Settings` — reset (rarely needed)
+1. `D365 FO Configuration Comparator: Getting Started` — opens walkthrough
+2. `D365 FO Configuration Comparator: Create / Open Workspace Folder` — scaffolds `.vscode/settings.json`
+3. `D365 FO Configuration Comparator: Run Onboarding` — deps + `az login` + envs + `/mcp` probe
+4. `D365 FO Configuration Comparator: Start Chrome with Remote Debugging` — `:9222` Chrome
+5. `D365 FO Configuration Comparator: Configure Form Paths` — paste UI paths, auto-discover `mi=`
+6. `D365 FO Configuration Comparator: Extract Form` — multi-select forms + envs + backend
+7. `D365 FO Configuration Comparator: Clear Saved Settings` — reset (rarely needed)
 
 ### Settings reference
 
@@ -596,7 +596,7 @@ This entire toolchain is **read-only**. The extension never writes to D365. All 
 ### First-time setup
 
 1. Install the VSIX or from Marketplace (when published).
-2. `D365 FO Config Compare: Getting Started`.
+2. `D365 FO Configuration Comparator: Getting Started`.
 3. Run walkthrough steps 1-5 in order.
 
 ### Adding a new environment
@@ -606,17 +606,17 @@ This entire toolchain is **read-only**. The extension never writes to D365. All 
    ```json
    { "label": "New Env", "baseUrl": "https://new-env.dynamics.com" }
    ```
-3. Run `D365 FO Config Compare: Run Onboarding` again — it probes the new env's `/mcp`.
+3. Run `D365 FO Configuration Comparator: Run Onboarding` again — it probes the new env's `/mcp`.
 
 ### Adding a new form
 
 1. Open D365 in CDP Chrome, navigate to the form once.
-2. `D365 FO Config Compare: Configure Form Paths` → paste the UI nav path.
+2. `D365 FO Configuration Comparator: Configure Form Paths` → paste the UI nav path.
 3. Validator discovers `mi=`, persists it. Done.
 
 ### Running a comparison
 
-1. `D365 FO Config Compare: Extract Form`.
+1. `D365 FO Configuration Comparator: Extract Form`.
 2. Select legal entity.
 3. Multi-select forms (Space to toggle, Enter to confirm).
 4. Multi-select envs (≥ 2 to get a DIFF file).
