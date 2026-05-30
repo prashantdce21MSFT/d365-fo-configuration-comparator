@@ -4,6 +4,8 @@
 
 This is **one document** consolidating everything from the D365 Configuration Drift Analysis project (Apr 28 – May 13, 2026). For shorter task-specific docs see [README.md](README.md), [SKILL.md](SKILL.md), and the [walkthrough](walkthrough/).
 
+For quick visual flowcharts, see [Extraction Diagrams](docs/extraction-diagrams.md).
+
 ---
 
 ## Table of Contents

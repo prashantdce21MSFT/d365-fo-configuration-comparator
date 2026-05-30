@@ -8,6 +8,8 @@ Extract **Microsoft Dynamics 365 Finance & Operations** form configurations from
 
 > 📘 **Read the [Master Guide](MASTER_GUIDE.md)** for the complete story: business problem, full architecture, both backends in deep detail, every gotcha we hit, and the original Python pipeline (preserved in [`archive/`](archive/)).
 
+> 🧭 **See [Extraction Diagrams](docs/extraction-diagrams.md)** for quick visual flowcharts of the MCP pipeline and MCP vs Playwright flow.
+
 ---
 
 ## What it does
