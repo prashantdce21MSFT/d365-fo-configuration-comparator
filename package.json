@@ -1,8 +1,8 @@
 {
   "name": "d365-form-extractor",
   "displayName": "D365 FO Configuration Comparator",
-  "description": "[BETA] Extract and compare Microsoft Dynamics 365 Finance & Operations form configurations across environments using D365 ERP MCP or Playwright (Chrome DevTools Protocol). Authenticates via Azure CLI \u2014 no app registration required.",
-  "version": "0.8.7",
+  "description": "[BETA] Extract and compare Microsoft Dynamics 365 Finance & Operations form configurations across environments using D365 ERP MCP or Playwright (Chrome DevTools Protocol). Authenticates via Azure CLI — no app registration required.",
+  "version": "0.8.8",
   "preview": true,
   "publisher": "PrashantVerma",
   "author": {
@@ -31,7 +31,9 @@
     "mcp",
     "playwright"
   ],
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
@@ -124,10 +126,18 @@
           "items": {
             "type": "object",
             "properties": {
-              "path": { "type": "string" },
-              "menuItem": { "type": "string" },
-              "validated": { "type": "boolean" },
-              "error": { "type": "string" }
+              "path": {
+                "type": "string"
+              },
+              "menuItem": {
+                "type": "string"
+              },
+              "validated": {
+                "type": "boolean"
+              },
+              "error": {
+                "type": "string"
+              }
             }
           }
         },
@@ -140,8 +150,14 @@
           "type": "object",
           "description": "Optional Azure AD app registration for MCP authentication (client credentials flow). The client secret is stored in VS Code SecretStorage, not here.",
           "properties": {
-            "tenantId": { "type": "string", "description": "AAD tenant ID (GUID)." },
-            "clientId": { "type": "string", "description": "Application (client) ID (GUID)." }
+            "tenantId": {
+              "type": "string",
+              "description": "AAD tenant ID (GUID)."
+            },
+            "clientId": {
+              "type": "string",
+              "description": "Application (client) ID (GUID)."
+            }
           }
         },
         "d365FormExtractor.defaultBackend": {
@@ -166,36 +182,56 @@
             "id": "folder",
             "title": "Create / open a workspace folder",
             "description": "Use C:\\\\D365-Form-Extractor (or pick your own). Output Excels and validated form paths are saved here.\n[Open workspace folder](command:d365FormExtractor.scaffoldWorkspace)",
-            "media": { "markdown": "walkthrough/01-folder.md" },
-            "completionEvents": ["onCommand:d365FormExtractor.scaffoldWorkspace"]
+            "media": {
+              "markdown": "walkthrough/01-folder.md"
+            },
+            "completionEvents": [
+              "onCommand:d365FormExtractor.scaffoldWorkspace"
+            ]
           },
           {
             "id": "onboard",
             "title": "Run onboarding (Python deps + environments)",
             "description": "Installs Python packages, checks Azure CLI, registers your D365 environments.\n[Run onboarding](command:d365FormExtractor.onboard)",
-            "media": { "markdown": "walkthrough/02-onboard.md" },
-            "completionEvents": ["onCommand:d365FormExtractor.onboard"]
+            "media": {
+              "markdown": "walkthrough/02-onboard.md"
+            },
+            "completionEvents": [
+              "onCommand:d365FormExtractor.onboard"
+            ]
           },
           {
             "id": "chrome",
             "title": "Launch Chrome with remote debugging",
             "description": "Starts Chrome on :9222. Sign in to D365 there.\n[Start Chrome](command:d365FormExtractor.startChromeCdp)",
-            "media": { "markdown": "walkthrough/03-chrome.md" },
-            "completionEvents": ["onCommand:d365FormExtractor.startChromeCdp"]
+            "media": {
+              "markdown": "walkthrough/03-chrome.md"
+            },
+            "completionEvents": [
+              "onCommand:d365FormExtractor.startChromeCdp"
+            ]
           },
           {
             "id": "paths",
             "title": "Configure form paths",
             "description": "Paste UI navigation paths; the extension discovers the menu item via Playwright.\n[Configure form paths](command:d365FormExtractor.configureFormPaths)",
-            "media": { "markdown": "walkthrough/04-paths.md" },
-            "completionEvents": ["onCommand:d365FormExtractor.configureFormPaths"]
+            "media": {
+              "markdown": "walkthrough/04-paths.md"
+            },
+            "completionEvents": [
+              "onCommand:d365FormExtractor.configureFormPaths"
+            ]
           },
           {
             "id": "extract",
             "title": "Extract a form",
             "description": "Pick a form and the environments to compare.\n[Extract Form](command:d365FormExtractor.extract)",
-            "media": { "markdown": "walkthrough/05-extract.md" },
-            "completionEvents": ["onCommand:d365FormExtractor.extract"]
+            "media": {
+              "markdown": "walkthrough/05-extract.md"
+            },
+            "completionEvents": [
+              "onCommand:d365FormExtractor.extract"
+            ]
           }
         ]
       }

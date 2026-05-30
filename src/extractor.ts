@@ -162,25 +162,27 @@ export async function runExtraction(
     );
     if (!envPicks || envPicks.length === 0) return;
 
-    // Backend choice — if all selected jobs share a single recommendation,
-    // use it as the default; otherwise show the picker.
+    // Backend choice — always show the picker so the user can confirm/override.
+    // Pre-selection priority: validator consensus recommendation → pinned setting.
     let backend = cfg.get<string>("defaultBackend") || "ask";
     const recBackends = new Set(jobs.map(j => j.recommendedBackend).filter(Boolean));
     const consensusBackend: "mcp" | "playwright" | undefined =
         recBackends.size === 1 ? (jobs.find(j => j.recommendedBackend)!.recommendedBackend) : undefined;
-    if (backend === "ask") {
+    const hasRecommendation = recBackends.size > 0;
+    {
+        const preselect = consensusBackend ?? (backend === "mcp" || backend === "playwright" ? backend : undefined);
         const items = [
             {
                 label: "$(database) D365 ERP MCP",
                 description: "Headless. Uses 'az account get-access-token'.",
                 id: "mcp",
-                picked: consensusBackend === "mcp",
+                picked: preselect === "mcp",
             },
             {
                 label: "$(browser) Playwright (Chrome CDP)",
                 description: "Drives your logged-in Chrome on port 9222.",
                 id: "playwright",
-                picked: consensusBackend === "playwright",
+                picked: preselect === "playwright",
             },
         ];
         if (consensusBackend) {
